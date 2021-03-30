@@ -1,0 +1,83 @@
+---
+- name: Launching AWS EC2 instances
+  hosts: localhost
+  gather_facts: False
+  vars:
+    - instance_ids:
+      - 'i-034fbe30e5e45dd0d'
+      - 'i-016be3eefc0a0de66'
+    
+    - software:
+      - boto
+      - boto3
+      - botocore
+    
+    - region: ap-south-1
+  tasks:
+
+  - name: Installing dependencies for AWS SDK
+    pip:
+      name: "{{ item }}"
+    loop: "{{ software }}"
+
+
+  - name: launching AWS EC2 instances
+    amazon.aws.ec2:
+      instance_ids: '{{ instance_ids }}'
+      state: running
+      wait: True
+      region: '{{ region }}'
+
+
+
+- name: Configuring HAproxy RP on master EC2 instance
+  hosts: tag_Name_Arth_MN
+  remote_user: ec2-user
+  gather_facts: False
+  vars:
+    - ansible_ssh_private_key_file: /root/ARTH_DN.pem
+  tasks: 
+
+  - name: Installing HAproxy
+    package:
+      name: haproxy
+
+
+  - name: Removing old HAproxy configuration file
+    file:
+      path: /etc/haproxy/haproxy.cfg
+      state: absent
+
+
+  - name: Writing custom configuration file for HAproxy
+    template:
+      src: /root/arth_ws/ansible_ws/loadbalancer/haproxy.cfg
+      dest: /etc/haproxy/
+
+  
+  - name: Starting HAproxy
+    service:
+      name: haproxy
+      state: restarted
+
+
+
+- name: Configuring Apache WebServer on AWS EC2 instances
+  hosts: aws_region_ap_south_1
+  remote_user: ec2-user
+  gather_facts: False
+  vars:
+    - ansible_ssh_private_key_file: /root/ARTH_DN.pem
+  tasks:
+
+  - name: Installing Apache Webserver
+    package:
+      name: httpd
+ 
+
+  - name: Starting webserver
+    service:
+      name: httpd
+      state: started
+
+      
